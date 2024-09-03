@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: argo-test-prod
+spec:
+  generators:
+    - git:
+        repoURL: git@github.com:kotkovkirill/argo-test.git
+        revision: HEAD
+        files:
+          - path: argo_test_app/production/**/Chart.yaml
+  template:
+    metadata:
+      labels:
+        serviceName: "argo-test"
+        appOwner: alerts-and-siem
+        region: "{{path[2]}}"
+        cluster: "{{path[3]}}"
+        environment: "prod"
+        repository: "gaia-full"
+        argocd-auto-deploy: enable
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      name: "argo-test-app-prod-{{path[2]}}-{{path[4]}}"
+    spec:
+      project: "{{path[1]}}"
+      source:
+        repoURL: git@github.com:kotkovkirill/argo-test.git
+        targetRevision: HEAD
+        path: "{{path}}"
+        helm:
+          parameters:
+            - name: "source_topic"
+              value: "{{path[4]}}"
+          valueFiles:
+            - ../../../../values.yaml
+            - ../../../values.yaml
+            - values.yaml
+      destination:
+        name: "{{path[3]}}"
+        namespace: "{{ path.basename }}"
+      syncPolicy: {}
+  syncPolicy:
+    preserveResourcesOnDeletion: true
